@@ -2,7 +2,10 @@ package com.example.jyqiu.multpro;
 import android.media.AudioFormat;
 import android.media.AudioRecord;
 import android.media.MediaRecorder;
+import android.text.format.Time;
 import android.util.Log;
+
+import java.util.Timer;
 
 
 /**
@@ -16,6 +19,11 @@ public class AudioRecordDemo {
             AudioFormat.CHANNEL_IN_DEFAULT, AudioFormat.ENCODING_PCM_16BIT);
     AudioRecord mAudioRecord;
     boolean isGetVoiceRun;
+    short[] buffer = new short[BUFFER_SIZE];
+
+    RootShellCmd rootShellCmd = new RootShellCmd();
+    boolean tag = true;
+
     public void getNoiseLevel() {
 
         mAudioRecord = new AudioRecord(MediaRecorder.AudioSource.MIC,
@@ -32,29 +40,26 @@ public class AudioRecordDemo {
             @Override
             public void run() {
                 mAudioRecord.startRecording();
-                short[] buffer = new short[BUFFER_SIZE];
                 while (isGetVoiceRun) {
-                    try {
-                        Thread.sleep(500);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
-                    //r是实际读取的数据长度，一般而言r会小于buffersize
                     int r = mAudioRecord.read(buffer, 0, BUFFER_SIZE);
                     long v = 0;
-                    // 将 buffer 内容取出，进行平方和运算
                     for (int i = 0; i < buffer.length; i++) {
                         //Log.i(TAG, "buffer:"+buffer[i]);
                         v += buffer[i] * buffer[i];
                     }
-                    // 平方和除以数据总长度，得到音量大小。
                     double mean = v / (double) r;
                     double volume = 10 * Math.log10(mean);
-                    if(volume > 70){
-                        Log.i(TAG, "test: "+volume);
+                    Log.i(TAG, "volume : " + volume);
+                    if(volume < 50){
+                        tag = true;
+                    }
+                    if(volume > 50 && tag == true){
+                        tag = false;
+                        rootShellCmd.exec("input tap 250 250");
+                        Log.i(TAG, "test: " + volume);
                     }
                 }
-                //mAudioRecord.stop();
+                mAudioRecord.stop();
                 mAudioRecord.release();
                 mAudioRecord = null;
             }
